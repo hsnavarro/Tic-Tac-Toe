@@ -21,16 +21,17 @@ void init() {
     for(int j = 0; j < 3; j++) grid[i][j] = ' ';
 }
 
-bool check_win(){
+bool check_win(char esc){
   int line[3] = {0}, col[3] = {0}, dig[2] = {0};
+
   for(int i = 0; i < 3; i++)
     for(int j = 0; j < 3; j++){
-      if(grid[i][j] != 'X') continue;
+      if(grid[i][j] != esc) continue;
       line[i] += (1 << j), col[j] += (1 << i);
       if(i == j) dig[0] += (1 << i);
       if(i != j and i + j == 2) dig[1] += (1 << i);
     }
-
+  
   for(int i = 0; i < 3; i++){
     if(line[i] == 7 or col[i] == 7) return true;
     if(i < 2 and dig[i] == 7) return true;
@@ -92,11 +93,24 @@ void print(){
 int main() {
   int sock_server = socket(AF_INET,SOCK_STREAM,0);
 
+  if(sock_server < 0){
+    perror("Erro ao criar socket do servidor");
+    return -1;
+  }
+
   fill();
   init();
 
-  bind(sock_server,(struct sockaddr*) &serverAddress, sizeof(serverAddress));
-  listen(sock_server, 1);
+  int bind_ok = bind(sock_server,(struct sockaddr*) &serverAddress, sizeof(serverAddress));
+  if(bind_ok < 0) {
+    perror("Erro no bind");
+    return -1;
+  }
+  int list_ok = listen(sock_server, 1);
+  if(list_ok < 0){
+    perror("Erro no listen");
+    return -1;
+  }
 
   printf("Esperando o outro jogador ");
   fflush(stdout);
@@ -114,6 +128,10 @@ int main() {
   clientLength = sizeof(clientAddress);
 
   int cl = accept(sock_server, (struct sockaddr*) &clientAddress, &clientLength);
+  if(cl < 0){
+    perror("Erro no accept");
+    return -1;
+  }
 
   printf("Jogador conectado\n");
   printf("A partida irá começar\n");
@@ -128,26 +146,36 @@ int main() {
     play(lin, col);
     string s = to_string(lin) + " " + to_string(col);
     strcpy(msg, s.c_str());
-    send(cl, msg, MAXSZ, 0);
-    if(check_win() or check_full()){
+    int send_ok = send(cl, msg, MAXSZ, 0);
+    if(send_ok <= 0){
+      perror("Erro ao enviar mensagem");
+      return -1;
+    }
+    if(check_win('X') or check_full()){
       print();
-      if(check_win()) printf("Você ganhou\n");
-      if(check_full()) printf("Empatou\n");
+      if(check_win('X')) printf("Você ganhou\n");
+      else if(check_full()) printf("Empatou\n");
       printf("Finalizando o jogo\n");
       break;
     }
     printf("Vez do outro jogador\n");
-    recv(cl, msg, MAXSZ, 0);
+    int recv_ok = recv(cl, msg, MAXSZ, 0);
+    if(recv_ok <= 0){
+      perror("Erro ao receber a mensagem");
+      return -1;
+    }
     string aux(msg);
     play(aux);
-    if(check_win() or check_full()){
+    if(check_win('O') or check_full()){
       print();
-      if(check_win()) printf("Você perdeu\n");
-      if(check_full()) printf("Empatou\n");
+      if(check_win('O')) printf("Você perdeu\n");
+      else if(check_full()) printf("Empatou\n");
       printf("Finalizando o jogo\n");
       break;
     }
-  } 
+  }
+
+  printf("Chegou aqui\n");
   close(cl);
   close(sock_server);
 }
