@@ -1,4 +1,4 @@
- - Set a max time to play, if exceeded, it will be retuned a random play
- - Host player can define the time to play
- - Host player can define it he wants to play with 'X' or 'O'
+ - Set a max time to play, if exceeded, it will return a random play
+ - Host player can define the max time to play
+ - Host player can define if he wants to play with 'X' or 'O'
  - Thread to ignore wrong user input
